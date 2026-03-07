@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scout"
+version = "0.0.1"
+description = "Python data exploration tool"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+keywords = ["scout", "data", "tool"]
+authors = [{ name = "Jesse Vogel", email = "jesse.t.vogel@gmail.com" }]
+maintainers = [{ name = "Jesse Vogel", email = "jesse.t.vogel@gmail.com" }]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Build Tools",
+    "Programming Language :: Python :: 3",
+]
+dependencies = ["slash @ git+https://github.com/jessetvogel/slash.git@main"]
+
+[project.optional-dependencies]
+dev = ["ruff", "ty"]
+test = ["numpy", "matplotlib"]
+
+[project.urls]
+"Homepage" = "https://github.com/jessetvogel/scout"
+"Bug Reports" = "https://github.com/jessetvogel/scout/issues"
+"Source" = "https://github.com/jessetvogel/scout"
+
+[project.scripts]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+lint.select = ["E", "F", "I"]
+line-length = 120
