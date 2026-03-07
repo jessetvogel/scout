@@ -31,11 +31,20 @@ class Layout(Div):
         self._mask = pd.Series([True] * len(data))
         self._cols = cols
         self._rows = rows
-        self._cells: list[Cell] = []
+        self._views: list[View] = []
 
         self._setup()
 
+    @property
+    def cols(self) -> int:
+        return self._cols
+
+    @property
+    def rows(self) -> int:
+        return self._rows
+
     def _setup(self) -> None:
+        self.clear()
         self.style(
             {
                 "display": "grid",
@@ -45,32 +54,27 @@ class Layout(Div):
             }
         )
 
-        self.clear()
-        self.append(self._cells)
+        for view in self._views:
+            self.append(Cell(self, view))
 
     def get_state(self) -> Any:
         return {
             "cols": self._cols,
             "rows": self._rows,
-            "cells": [cell.serialize() for cell in self._cells],
+            "views": [],  # TODO
         }
 
     def set_state(self, state: Any) -> None:
         self._cols = state["cols"]
         self._rows = state["rows"]
-        self._cells = [
-            Cell(
-                self._create_view(view_type, view_state, Box(*box)),
-                cols=self._cols,  # TODO: resize is job of Layout since they know cols rows
-                rows=self._rows,
-            )
-            for (box, (view_type, view_state)) in state["cells"]
+        self._views = [
+            self._create_view(view_type, view_state, Box(*box)) for (box, (view_type, view_state)) in state["cells"]
         ]
         self._setup()
 
     def _refresh_views(self) -> None:
-        for cell in self._cells:
-            cell.view.refresh()
+        for view in self._views:
+            view.refresh()
 
     def _create_view(self, view_type: str, view_state: Any, box: Box) -> View:
         # Create view context
@@ -99,16 +103,11 @@ class Layout(Div):
 
 
 class Cell(Div):
-    def __init__(self, view: View, *, cols: int, rows: int) -> None:
+    def __init__(self, layout: Layout, view: View) -> None:
         super().__init__()
+        self._layout = layout
         self._view = view
-        self._cols = cols
-        self._rows = rows
         self._setup()
-
-    @property
-    def view(self) -> View:
-        return self._view
 
     def _setup(self) -> None:
         self.style({"position": "relative", "overflow": "hidden"})
@@ -149,7 +148,7 @@ class Cell(Div):
         self._dialog = Dialog(
             Column(
                 Span("Set position").style({"font-weight": "bold"}),
-                SelectGrid(self._cols, self._rows).onchange(self._resize),
+                SelectGrid(self._layout.cols, self._layout.rows).onchange(self._resize),
             ).style({"gap": "16px", "align-items": "center"})
         ).style({"outline": "none"})
         self.append(self._dialog)
