@@ -10,11 +10,11 @@ from scout.utils import Box
 
 
 class SelectGrid(Div):
-    def __init__(self, width: int, height: int) -> None:
+    def __init__(self, cols: int, rows: int) -> None:
         super().__init__()
 
-        self._width = width
-        self._height = height
+        self._cols = cols
+        self._rows = rows
         self._handler: Handler[Box] | None = None
 
         self._setup()
@@ -24,8 +24,8 @@ class SelectGrid(Div):
         self.style(
             {
                 "display": "grid",
-                "grid-template-columns": " ".join(["32px"] * self._width),
-                "grid-template-rows": " ".join(["32px"] * self._height),
+                "grid-template-columns": " ".join(["32px"] * self._cols),
+                "grid-template-rows": " ".join(["32px"] * self._rows),
                 "gap": "4px",
                 "user-drag": "none",
             }
@@ -33,8 +33,8 @@ class SelectGrid(Div):
 
         # Create cells
         self._cells: list[dict[str, int | str]] = []
-        for x in range(self._width):
-            for y in range(self._height):
+        for x in range(self._cols):
+            for y in range(self._rows):
                 self.append(
                     cell := Div().style(
                         {
@@ -55,7 +55,7 @@ class SelectGrid(Div):
         self.onmount(self._onmount)
 
     def _onmount(self) -> None:
-        Session.require().execute(_JS_SELECT_GRID_SETUP, [self._cells, self._input.id])
+        Session.require().execute(_JS_SELECT_GRID_SETUP, [self.id, self._cells, self._input.id])
 
     def _onchange(self, event: ChangeEvent) -> None:
         x, y, w, h = json.loads(event.value)
@@ -70,10 +70,11 @@ class SelectGrid(Div):
 
 
 _JS_SELECT_GRID_SETUP = JSFunction(
-    ["cells", "input_id"],
-    r"""
+    ["grid_id", "cells", "input_id"],
+    r""" 
 const selection = [null, null, null, null];
 const input = document.getElementById(input_id);
+const grid = document.getElementById(grid_id);
 
 function refresh(id) {
     if (selection[0] !== null) {
@@ -136,7 +137,8 @@ for (const cell of cells) {
         selection[3] = cell.y;
         refresh(cell.id);
     });
-    // elem.addEventListener("mouseout", () => refresh());
+    
+    grid.addEventListener("mouseout", () => refresh());
 }
 """,
 )
