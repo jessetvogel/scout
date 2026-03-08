@@ -128,7 +128,6 @@ class Menu(Column):
 
 
 class SelectData(Row):
-
     def __init__(self, source: DataSource, set_data: Callable[[pd.DataFrame], None]) -> None:
         super().__init__()
         self._source = source

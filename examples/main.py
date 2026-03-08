@@ -1,10 +1,9 @@
-from pathlib import Path
 import random
+from pathlib import Path
 
 import pandas as pd
 
-from scout import App
-from scout import DataSource
+from scout import App, DataSource
 
 data = pd.DataFrame(
     [
