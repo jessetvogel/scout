@@ -9,7 +9,7 @@ from slash.core import Session
 from slash.html import Button, Code, Dialog, Div, Pre, Span
 from slash.layout import Column
 
-from scout.components import SelectGrid
+from scout.components.select_grid import SelectGrid
 from scout.icons import icon_dots
 from scout.utils import Box
 from scout.views import EmptyView, View, ViewContext
@@ -28,18 +28,14 @@ VIEW_TYPES: list[type[View]] = [
 
 
 class Layout(Div):
-    def __init__(self, data: pd.DataFrame, *, cols: int, rows: int) -> None:
+    def __init__(self, cols: int, rows: int) -> None:
         super().__init__()
 
-        self._data = data
-        self._mask = pd.Series([True] * len(data))
         self._cols = cols
         self._rows = rows
         self._views: list[View] = []
 
         self._setup()
-
-        self._load_state()
 
     @property
     def cols(self) -> int:
@@ -48,6 +44,10 @@ class Layout(Div):
     @property
     def rows(self) -> int:
         return self._rows
+
+    def set_data(self, data: pd.DataFrame) -> None:
+        self._data = data
+        self._mask = pd.Series([True] * len(data))
 
     def _setup(self) -> None:
         self.clear()
@@ -169,7 +169,7 @@ class Cell(Div):
         self._setup()
 
     def _setup(self) -> None:
-        self.style({"position": "relative", "background-color": "var(--bg-dark)"})
+        self.style({"position": "relative", "background-color": "var(--bg-dark)", "overflow": "auto"})
         self.append(self._view, self._button_resize())
         self._set_position()
 

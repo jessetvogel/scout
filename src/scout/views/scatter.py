@@ -10,7 +10,7 @@ from slash.core import Elem
 from slash.html import Div, Option, Select, Span
 from slash.layout import Column, Panel, Row
 
-from scout.components import SelectRect
+from scout.components.select_rect import SelectRect
 from scout.utils import Box
 from scout.views import View, ViewContext
 

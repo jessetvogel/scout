@@ -1,8 +1,10 @@
+from pathlib import Path
 import random
 
 import pandas as pd
 
 from scout import App
+from scout import DataSource
 
 data = pd.DataFrame(
     [
@@ -16,8 +18,19 @@ data = pd.DataFrame(
 )
 
 
+class MyData(DataSource):
+    def params(self) -> dict[str, list[str]]:
+        return {
+            "size": ["100", "250", "1000"],
+        }
+
+    def data(self, **kwargs: str) -> pd.DataFrame:
+        size = int(kwargs["size"])
+        return pd.read_csv(Path(__file__).parent / "data.csv")[:size]
+
+
 def main():
-    app = App(data)
+    app = App(MyData())
     app.run()
 
 
