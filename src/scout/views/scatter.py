@@ -98,15 +98,15 @@ class ScatterView(View, Panel):
                     Column(
                         Span("x-axis").style({"font-weight": "bold", "font-size": "12px", "margin-bottom": "4px"}),
                         self._select_x,
-                    ).style({"flex-grow": "1", "text-align": "center"}),
+                    ).style({"flex": "1", "text-align": "center"}),
                     Column(
                         Span("y-axis").style({"font-weight": "bold", "font-size": "12px", "margin-bottom": "4px"}),
                         self._select_y,
-                    ).style({"flex-grow": "1", "text-align": "center"}),
+                    ).style({"flex": "1", "text-align": "center"}),
                     Column(
                         Span("color").style({"font-weight": "bold", "font-size": "12px", "margin-bottom": "4px"}),
                         self._select_c,
-                    ).style({"flex-grow": "1", "text-align": "center"}),
+                    ).style({"flex": "1", "text-align": "center"}),
                 ).style({"gap": "16px", "justify-content": "center"}),
             ).style({"gap": "0px"})
         )

@@ -4,10 +4,15 @@ import random
 
 import pandas as pd
 from slash import App as SlashApp
+from slash.basic import Tooltip
 from slash.core import Elem, Session
+from slash.html import Button, Dialog, Span
 from slash.layout import Column
 
 from scout._layout import Layout
+from scout.components import SelectGrid
+from scout.icons import icon_scatter, icon_table
+from scout.utils import Box
 
 
 class App:
@@ -31,19 +36,11 @@ def home() -> Elem:
             for _ in range(100)
         ]
     )
-    layout = Layout(data, cols=5, rows=4)
 
-    layout.set_state(
-        {
-            "cols": 5,
-            "rows": 4,
-            "views": [
-                [[0, 0, 2, 2], "TableView", []],
-                [[2, 0, 2, 2], "ScatterView", []],
-                [[0, 2, 4, 2], "EmptyView", []],
-            ],
-        }
-    )
+    layout = Layout(data, cols=6, rows=5)
+
+    menu = Menu(layout)
+    menu.mount()
 
     # Set state
     state = Session.require().location.query.get("layout", None)
@@ -51,13 +48,75 @@ def home() -> Elem:
         layout.set_state(json.loads(base64.b64decode(state).decode()))
 
     # Render
-
     return Column(
         layout,
-    ).style(
-        {
-            "gap": "32px",
-            "align-items": "center",
-            "margin-top": "32px",
-        }
-    )
+    ).style({"gap": "32px", "align-items": "center", "padding-top": "32px"})
+
+
+class Menu(Column):
+    def __init__(self, layout: Layout) -> None:
+        super().__init__()
+
+        self._layout = layout
+
+        self._setup()
+
+    def _setup(self) -> None:
+        self.style(
+            {
+                "position": "fixed",
+                "left": "0px",
+                "top": "0px",
+                "gap": "8px",
+                "z-index": "10",
+                "margin-left": "8px",
+                "height": "100dvh",
+                "justify-content": "center",
+            }
+        )
+
+        self.append(
+            self._button(icon_table().style({"width": "20px"}), title="Add table").onclick(
+                lambda: self._add_view("TableView", "table")
+            )
+        )
+        self.append(
+            self._button(icon_scatter().style({"width": "20px"}), title="Add scatter").onclick(
+                lambda: self._add_view("ScatterView", "scatter")
+            )
+        )
+
+    def _button(self, icon: Elem, *, title: str | None = None) -> Button:
+        button = Button(icon).style(
+            {
+                "display": "flex",
+                "align-items": "center",
+                "justify-content": "center",
+                "width": "48px",
+                "height": "48px",
+                "min-width": "48px",
+                "border-radius": "24px",
+            }
+        )
+
+        if title is not None:
+            button.append(Tooltip(title, target=button).style({"white-space": "nowrap"}))
+
+        return button
+
+    def _add_view(self, view_type: str, name: str) -> None:
+        dialog = Dialog(
+            Column(
+                Span(f"Place {name}").style({"font-weight": "bold"}),
+                SelectGrid(
+                    cols=self._layout.cols,
+                    rows=self._layout.rows,
+                ).onchange(lambda box: actually_add_view(box)),
+            ).style({"gap": "16px", "align-items": "center"})
+        ).style({"outline": "none"})
+        dialog.mount()
+        dialog.show_modal()
+
+        def actually_add_view(box: Box) -> None:
+            dialog.unmount()
+            self._layout.add_view(box, view_type)

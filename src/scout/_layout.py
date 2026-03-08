@@ -6,10 +6,11 @@ from typing import Any
 
 import pandas as pd
 from slash.core import Session
-from slash.html import Dialog, Div, Span
+from slash.html import Code, Dialog, Div, Pre, Span
 from slash.layout import Column
 
 from scout.components import SelectGrid
+from scout.icons import icon_dots
 from scout.utils import Box
 from scout.views import EmptyView, View, ViewContext
 from scout.views.scatter import ScatterView
@@ -104,7 +105,7 @@ class Layout(Div):
         view_state = data[2]
         return self._create_view(view_box, view_type, view_state)
 
-    def _create_view(self, view_box: Box, view_type: str, view_state: Any) -> View:
+    def _create_view(self, view_box: Box, view_type: str, view_state: Any | None = None) -> View:
         # Create view context
         ctx = ViewContext(
             box=view_box,
@@ -125,14 +126,22 @@ class Layout(Div):
             msg = f"Unknown view type '{view_type}'"
             raise ValueError(msg)
 
-        try:
-            view.set_state(view_state)
-        except:
-            pass
+        if view_state is not None:
+            try:
+                view.set_state(view_state)
+            except Exception as err:
+                Session.require().log("Failed to set state of view", level="warning", details=Pre(Code(str(err))))
 
         view.refresh()
 
         return view
+
+    def add_view(self, view_box: Box, view_type: str) -> None:
+        view = self._create_view(view_box, view_type)
+        self._views.append(view)
+        self.append(Cell(self, view))
+        view.refresh()
+        self._store_state()
 
     def _refresh_views(self) -> None:
         for view in self._views:
@@ -173,17 +182,20 @@ class Cell(Div):
 
     def _button_resize(self) -> Div:
         return (
-            Div()
+            Div(icon_dots().style({"width": "16px"}))
             .style(
                 {
+                    "display": "flex",
+                    "align-items": "center",
+                    "justify-content": "center",
                     "position": "absolute",
-                    "right": "8px",
-                    "top": "8px",
-                    "background-color": "var(--green)",
+                    "right": "6px",
+                    "top": "6px",
+                    "background-color": "color-mix(in srgb, var(--bg), transparent 50%)",
                     "width": "24px",
                     "height": "24px",
-                    "opacity": "0.5",
                     "border-radius": "12px",
+                    "cursor": "pointer",
                 }
             )
             .onclick(self._open_dialog_resize)
