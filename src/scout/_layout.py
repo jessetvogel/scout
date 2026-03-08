@@ -54,6 +54,22 @@ class Layout(Div):
             }
         )
 
+        # placeholders
+        for x in range(self._cols):
+            for y in range(self._rows):
+                self.append(
+                    Div().style(
+                        {
+                            "grid-column": f"{x + 1} / {x + 2}",
+                            "grid-row": f"{y + 1} / {y + 2}",
+                            "border": "1px solid var(--border-muted)",
+                            "border-radius": "8px",
+                            "opacity": "0.25",
+                        }
+                    )
+                )
+
+        # views
         for view in self._views:
             self.append(Cell(self, view))
 
@@ -84,6 +100,7 @@ class Layout(Div):
             height=box.h * (CELL_WIDTH + GRID_GAP) - GRID_GAP,
             data=self._data,
             mask=self._mask,
+            refresh_views=self._refresh_views,
         )
 
         view: View
@@ -110,7 +127,7 @@ class Cell(Div):
         self._setup()
 
     def _setup(self) -> None:
-        self.style({"position": "relative", "overflow": "hidden"})
+        self.style({"position": "relative"})
         self.append(self._view, self._button_resize())
         self._set_position()
 

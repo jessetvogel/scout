@@ -72,20 +72,25 @@ class SelectGrid(Div):
 _JS_SELECT_GRID_SETUP = JSFunction(
     ["grid_id", "cells", "input_id"],
     r""" 
-const selection = [null, null, null, null];
 const input = document.getElementById(input_id);
 const grid = document.getElementById(grid_id);
 
+let selection = null;
+
+function box() {
+    const x = Math.min(selection[0], selection[2]);
+    const y = Math.min(selection[1], selection[3]);
+    const w = Math.abs(selection[0] - selection[2]) + 1;
+    const h = Math.abs(selection[1] - selection[3]) + 1;
+    return [x, y, w, h];
+}
+
 function refresh(id) {
-    if (selection[0] !== null) {
-        const x_min = Math.min(selection[0], selection[2]);
-        const x_max = Math.max(selection[0], selection[2]);
-        const y_min = Math.min(selection[1], selection[3]);
-        const y_max = Math.max(selection[1], selection[3]);
-    
+    if (selection !== null) {
+        const [x, y, w, h] = box();
         for (const cell of cells) {
             const elem = document.getElementById(cell.id);
-            if (cell.x >= x_min && cell.x <= x_max && cell.y >= y_min && cell.y <= y_max) {
+            if (cell.x >= x && cell.x < x + w && cell.y >= y && cell.y < y + h) {
                 elem.style.backgroundColor = "var(--blue)";
             } else {
                 elem.style.backgroundColor = null;
@@ -94,7 +99,6 @@ function refresh(id) {
     } else {
         for (const cell of cells) {
             const elem = document.getElementById(cell.id);
-
             if (cell.id == id) {
                 elem.style.backgroundColor = "var(--light-gray)";
             } else {
@@ -108,33 +112,28 @@ for (const cell of cells) {
     const elem = document.getElementById(cell.id);
 
     elem.addEventListener("mousedown", () => {
-        selection[0] = cell.x;
-        selection[1] = cell.y;
-        selection[2] = cell.x;
-        selection[3] = cell.y;
-        refresh();
+        if (selection === null) {
+            selection = [cell.x, cell.y, cell.x, cell.y];
+            refresh();
+        }
     });
 
     elem.addEventListener("mouseup", () => {
-        // send selection to Python
-        input.value = JSON.stringify([
-            Math.min(selection[0], selection[2]), // x
-            Math.min(selection[1], selection[3]), // y
-            Math.abs(selection[0] - selection[2]) + 1, // width
-            Math.abs(selection[1] -selection[3]) + 1, // height
-        ]);
-        input.dispatchEvent(new Event("change"));
-        // reset selection
-        selection[0] = null;
-        selection[1] = null;
-        selection[2] = null;
-        selection[3] = null;
-        refresh(cell.id);
+        if (selection !== null) {
+            // send selection to Python
+            input.value = JSON.stringify(box());
+            input.dispatchEvent(new Event("change"));
+            // reset selection
+            selection = null;
+            refresh(cell.id);
+        }
     });
 
     elem.addEventListener("mouseover", () => {
-        selection[2] = cell.x;
-        selection[3] = cell.y;
+        if (selection !== null) {
+            selection[2] = cell.x;
+            selection[3] = cell.y;
+        }
         refresh(cell.id);
     });
     
