@@ -6,6 +6,7 @@ from colorswan.okcolor import Oklch
 from pandas.api.types import is_numeric_dtype
 from slash._utils import default_color
 from slash.basic import Axes, Scatter
+from slash.core import Elem
 from slash.html import Div, Option, Select, Span
 from slash.layout import Column, Panel, Row
 
@@ -208,6 +209,9 @@ class ScatterView(View, Panel):
                 opacity=0.33,
             )
         )
+
+    def settings(self) -> Elem:
+        return Div()
 
 
 converter = OkColor()

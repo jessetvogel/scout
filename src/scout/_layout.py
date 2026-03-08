@@ -6,7 +6,7 @@ from typing import Any
 
 import pandas as pd
 from slash.core import Session
-from slash.html import Code, Dialog, Div, Pre, Span
+from slash.html import Button, Code, Dialog, Div, Pre, Span
 from slash.layout import Column
 
 from scout.components import SelectGrid
@@ -143,6 +143,10 @@ class Layout(Div):
         view.refresh()
         self._store_state()
 
+    def remove_view(self, view: View) -> None:
+        self._views.remove(view)
+        self._store_state()
+
     def _refresh_views(self) -> None:
         for view in self._views:
             view.refresh()
@@ -174,12 +178,6 @@ class Cell(Div):
         w, h = self._view.ctx.box.w, self._view.ctx.box.h
         self.style({"grid-column": f"{x + 1} / span {w}", "grid-row": f"{y + 1} / span {h}"})
 
-    def serialize(self) -> Any:
-        pass
-
-    def deserialize(self, data: Any) -> None:
-        pass
-
     def _button_resize(self) -> Div:
         return (
             Div(icon_dots().style({"width": "16px"}))
@@ -198,22 +196,37 @@ class Cell(Div):
                     "cursor": "pointer",
                 }
             )
-            .onclick(self._open_dialog_resize)
+            .onclick(self._open_dialog)
         )
 
-    def _open_dialog_resize(self) -> None:
-        # TODO: escape dialog problems
+    def _open_dialog(self) -> None:
+        # Remove any previous dialog
+        if hasattr(self, "_dialog") and self._dialog.is_mounted():
+            self._dialog.unmount()
+
+        # Create dialog
         self._dialog = Dialog(
             Column(
                 Span("Set position").style({"font-weight": "bold"}),
                 SelectGrid(self._layout.cols, self._layout.rows).onchange(self._resize),
-            ).style({"gap": "16px", "align-items": "center"})
+                self._view.settings(),
+                Button("Delete")
+                .style({"color": "var(--red)", "border": "1px solid var(--red)", "width": "100%"})
+                .onclick(lambda: delete()),
+                Button("Close").style({"width": "100%"}).onclick(lambda: self._dialog.unmount()),
+            ).style({"gap": "8px", "align-items": "center"})
         ).style({"outline": "none"})
         self.append(self._dialog)
+
+        def delete() -> None:
+            self._layout.remove_view(self._view)
+            self.unmount()
+
+        # Show dialog
         self._dialog.show_modal()
 
     def _resize(self, box: Box) -> None:
-        self._dialog.unmount()
+        # self._dialog.unmount()
 
         self._view.ctx.box = box
         self._view.ctx.width = box.w * (CELL_WIDTH + GRID_GAP) - GRID_GAP

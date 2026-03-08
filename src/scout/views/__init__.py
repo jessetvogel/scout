@@ -50,6 +50,10 @@ class View(ABC, Elem):
     def set_state(self, state: Any) -> None:
         """Sets the current state."""
 
+    @abstractmethod
+    def settings(self) -> Elem:
+        """Settings element."""
+
 
 class EmptyView(View, Panel):
     def __init__(self, ctx: ViewContext) -> None:
