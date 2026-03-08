@@ -22,6 +22,7 @@ classifiers = [
 dependencies = [
     "pandas",
     "slash @ git+https://github.com/jessetvogel/slash.git@main",
+    "colorswan",
 ]
 
 [project.optional-dependencies]

@@ -1,6 +1,10 @@
-from typing import Any
+from typing import Any, cast
 
+import pandas as pd
+from colorswan import OkColor
+from colorswan.okcolor import Oklch
 from pandas.api.types import is_numeric_dtype
+from slash._utils import default_color
 from slash.basic import Axes, Scatter
 from slash.html import Div, Option, Select, Span
 from slash.layout import Column, Panel, Row
@@ -11,6 +15,8 @@ from scout.views import View, ViewContext
 
 PAD = 16
 
+CONVERTER = OkColor()
+
 
 class ScatterView(View, Panel):
     def __init__(self, ctx: ViewContext) -> None:
@@ -18,24 +24,53 @@ class ScatterView(View, Panel):
         Panel.__init__(self)
 
         df = self.ctx.data
-        self._keys: tuple[str, ...] = tuple(key for key in df if is_numeric_dtype(df.dtypes[key]))
-        self._x_key = self._keys[0]
-        self._y_key = self._keys[1]
+        keys = tuple(df.keys())
+        keys_numeric = tuple(key for key in keys if is_numeric_dtype(df.dtypes[key]))
 
-        self._select_x_key = Select([Option(key) for key in self._keys]).style({"text-align": "center"})
-        self._select_y_key = Select([Option(key) for key in self._keys]).style({"text-align": "center"})
-        self._select_x_key.value = self._x_key
-        self._select_y_key.value = self._y_key
+        self._select_x = Select([Option(key) for key in keys_numeric]).style({"text-align": "center"})
+        self._select_y = Select([Option(key) for key in keys_numeric]).style({"text-align": "center"})
+        self._select_c = Select([Option("-", "")] + [Option(key) for key in keys]).style({"text-align": "center"})
 
-        self._select_x_key.onchange(self.refresh)
-        self._select_y_key.onchange(self.refresh)
+        self.x_key = keys_numeric[0]
+        self.y_key = keys_numeric[min(1, len(keys_numeric))]
+        self.c_key = ""
+
+        self._select_x.onchange(self.update)
+        self._select_y.onchange(self.update)
+        self._select_c.onchange(self.update)
 
         self.style({"width": "100%", "height": "100%", "box-sizing": "border-box", "padding": f"{PAD}px"})
 
-    def refresh(self) -> None:
-        self._x_key = self._select_x_key.value
-        self._y_key = self._select_y_key.value
+    @property
+    def x_key(self) -> str:
+        return self._select_x.value
 
+    @x_key.setter
+    def x_key(self, key: str) -> None:
+        self._select_x.value = key
+
+    @property
+    def y_key(self) -> str:
+        return self._select_y.value
+
+    @y_key.setter
+    def y_key(self, key: str) -> None:
+        self._select_y.value = key
+
+    @property
+    def c_key(self) -> str | None:
+        c = self._select_c.value
+        return c if c != "" else None
+
+    @c_key.setter
+    def c_key(self, key: str | None) -> None:
+        self._select_c.value = key if key is not None else ""
+
+    def update(self) -> None:
+        self.ctx.store_state()
+        self.refresh()
+
+    def refresh(self) -> None:
         width = self.ctx.width - PAD - PAD
         height = self.ctx.height - PAD - PAD - 54
 
@@ -62,41 +97,58 @@ class ScatterView(View, Panel):
                 Row(
                     Column(
                         Span("x-axis").style({"font-weight": "bold", "font-size": "12px", "margin-bottom": "4px"}),
-                        self._select_x_key,
+                        self._select_x,
                     ).style({"flex-grow": "1", "text-align": "center"}),
                     Column(
                         Span("y-axis").style({"font-weight": "bold", "font-size": "12px", "margin-bottom": "4px"}),
-                        self._select_y_key,
+                        self._select_y,
+                    ).style({"flex-grow": "1", "text-align": "center"}),
+                    Column(
+                        Span("color").style({"font-weight": "bold", "font-size": "12px", "margin-bottom": "4px"}),
+                        self._select_c,
                     ).style({"flex-grow": "1", "text-align": "center"}),
                 ).style({"gap": "16px", "justify-content": "center"}),
             ).style({"gap": "0px"})
         )
 
-        self._axes.add_plot(
-            Scatter(
-                self.ctx.data.loc[self.ctx.mask, self._x_key].tolist(),
-                self.ctx.data.loc[self.ctx.mask, self._y_key].tolist(),
-            )
-        )
+        df = self.ctx.data
 
-        self._axes.add_plot(
-            Scatter(
-                self.ctx.data.loc[~self.ctx.mask, self._x_key].tolist(),
-                self.ctx.data.loc[~self.ctx.mask, self._y_key].tolist(),
-                opacity=0.5,
-            )
-        )
+        if self.c_key is None:
+            self._add_scatter(df)
+            self._axes.set_legend(False)
+        else:
+            if not is_numeric_dtype(df.dtypes[self.c_key]):
+                c_values = df[self.c_key].unique().tolist()
+                for i, c_value in enumerate(c_values):
+                    self._add_scatter(
+                        df.loc[df[self.c_key] == c_value],
+                        label=str(c_value),
+                        color=default_color(i),
+                    )
+                self._axes.set_legend(True)
+            else:
+                self._add_scatter(df, color_key=self.c_key)
+                self._axes.set_legend(False)
 
         # axes.set_xlabel(x_key)
         # axes.set_ylabel(y_key)
 
-        self._axes.render()
+        if self._axes.is_mounted():
+            self._axes.render()
+        else:
+            self._axes.onmount(lambda: self._axes.render())
 
     def get_state(self) -> Any:
-        return {}
+        return {
+            "x": self.x_key,
+            "y": self.y_key,
+            "c": self.c_key,
+        }
 
     def set_state(self, state: Any) -> None:
-        pass
+        self.x_key = state["x"]
+        self.y_key = state["y"]
+        self.c_key = state["c"]
 
     def _set_selection(self, box: Box) -> None:
         # Convert box coordinates to data coordinates
@@ -108,19 +160,83 @@ class ScatterView(View, Panel):
             # If just clicked
             self.ctx.mask[:] = True
         else:
-            self.ctx.mask[:] = self.ctx.data[self._x_key].between(x_min, x_max) & self.ctx.data[self._y_key].between(
+            self.ctx.mask[:] = self.ctx.data[self.x_key].between(x_min, x_max) & self.ctx.data[self.y_key].between(
                 y_min, y_max
             )
 
         # Refresh views
         self.ctx.refresh_views()
 
-    # def _uv_to_xy(self, u: float, v: float) -> tuple[float, float]:
-    #     """Convert SVG uv-coordinates to abstract xy-coordinates."""
-    #     x = self._view.x_min + (self._view.x_max - self._view.x_min) * (u - self._view.u_min) / (
-    #         self._view.u_max - self._view.u_min
-    #     )
-    #     y = self._view.y_min + (self._view.y_max - self._view.y_min) * (v - self._view.v_min) / (
-    #         self._view.v_max - self._view.v_min
-    #     )
-    #     return x, y
+    def _add_scatter(
+        self,
+        df: pd.DataFrame,
+        *,
+        label: str | None = None,
+        color: str | None = None,
+        color_key: str | None = None,
+    ) -> None:
+        mask = self.ctx.mask
+
+        rows_a = df.loc[mask]
+        rows_b = df.loc[~mask]
+
+        if color is not None:
+            color_a = color
+            color_b = color
+        elif color_key is not None:
+            c_col = df[color_key]
+            c_min, c_max = c_col.min(), c_col.max()
+            color_a = color_gradient((rows_a[color_key] - c_min) / (c_max - c_min))
+            color_b = color_gradient((rows_b[color_key] - c_min) / (c_max - c_min))
+        else:
+            color_a = None
+            color_b = None
+
+        self._axes.add_plot(
+            Scatter(
+                rows_a[self.x_key].tolist(),
+                rows_a[self.y_key].tolist(),
+                color=color_a,
+                label=label,
+            )
+        )
+        self._axes.add_plot(
+            Scatter(
+                rows_b[self.x_key].tolist(),
+                rows_b[self.y_key].tolist(),
+                color=color_b,
+                opacity=0.33,
+            )
+        )
+
+
+converter = OkColor()
+
+palette = ["#1d4fa6", "#19cf86", "#ffee00", "#e3440a", "#990000"]
+palette_oklch: list[Oklch] = [cast(Oklch, converter.convert(c, return_type="oklch")) for c in palette]
+
+
+def color_gradient(values: list[float]) -> list[str]:
+    n = len(palette_oklch)
+    colors = []
+    for value in values:
+        # Compute position along the palette
+        pos = value * (n - 1)
+        i = int(pos)
+        t = pos - i
+        if i >= n - 1:
+            colors.append(f"oklch({palette_oklch[-1].L:.4f} {palette_oklch[-1].C:.4f} {palette_oklch[-1].h:.4f})")
+            continue
+
+        start = palette_oklch[i]
+        end = palette_oklch[i + 1]
+
+        # Interpolate L, C, H
+        L = start.L + t * (end.L - start.L)
+        C = start.C + t * (end.C - start.C)
+        dh = (end.h - start.h + 180) % 360 - 180
+        H = (start.h + t * dh) % 360
+
+        colors.append(f"oklch({L:.4f} {C:.4f} {H:.4f})")
+
+    return colors

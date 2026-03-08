@@ -27,6 +27,8 @@ class ViewContext:
     """Selection mask."""
     refresh_views: Callable[[], None]
     """Function to refresh all views."""
+    store_state: Callable[[], None]
+    """Function to store state."""
 
 
 class View(ABC, Elem):

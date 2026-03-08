@@ -37,10 +37,10 @@ def home() -> Elem:
         {
             "cols": 5,
             "rows": 4,
-            "cells": [
-                [[0, 0, 2, 2], ["TableView", []]],
-                [[2, 0, 2, 2], ["ScatterView", []]],
-                [[0, 2, 4, 2], ["EmptyView", []]],
+            "views": [
+                [[0, 0, 2, 2], "TableView", []],
+                [[2, 0, 2, 2], "ScatterView", []],
+                [[0, 2, 4, 2], "EmptyView", []],
             ],
         }
     )

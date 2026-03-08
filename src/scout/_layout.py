@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import base64
+import json
 from typing import Any
 
 import pandas as pd
+from slash.core import Session
 from slash.html import Dialog, Div, Span
 from slash.layout import Column
 
@@ -12,15 +15,15 @@ from scout.views import EmptyView, View, ViewContext
 from scout.views.scatter import ScatterView
 from scout.views.table import TableView
 
-VIEWS: list[type[View]] = [
-    TableView,
-    EmptyView,
-    ScatterView,
-]
-
 CELL_WIDTH = 128
 CELL_HEIGHT = 128
 GRID_GAP = 16
+
+VIEW_TYPES: list[type[View]] = [
+    TableView,
+    ScatterView,
+    EmptyView,
+]
 
 
 class Layout(Div):
@@ -34,6 +37,8 @@ class Layout(Div):
         self._views: list[View] = []
 
         self._setup()
+
+        self._load_state()
 
     @property
     def cols(self) -> int:
@@ -64,7 +69,7 @@ class Layout(Div):
                             "grid-row": f"{y + 1} / {y + 2}",
                             "border": "1px solid var(--border-muted)",
                             "border-radius": "8px",
-                            "opacity": "0.25",
+                            "opacity": "0.33",
                         }
                     )
                 )
@@ -77,34 +82,42 @@ class Layout(Div):
         return {
             "cols": self._cols,
             "rows": self._rows,
-            "views": [],  # TODO
+            "views": [self._encode_view(view) for view in self._views],
         }
 
     def set_state(self, state: Any) -> None:
         self._cols = state["cols"]
         self._rows = state["rows"]
-        self._views = [
-            self._create_view(view_type, view_state, Box(*box)) for (box, (view_type, view_state)) in state["cells"]
-        ]
+        self._views = [self._decode_view(view_data) for view_data in state["views"]]
         self._setup()
 
-    def _refresh_views(self) -> None:
-        for view in self._views:
-            view.refresh()
+    def _encode_view(self, view: View) -> Any:
+        return [
+            view.ctx.box.encode(),
+            view.__class__.__name__,
+            view.get_state(),
+        ]
 
-    def _create_view(self, view_type: str, view_state: Any, box: Box) -> View:
+    def _decode_view(self, data: Any) -> View:
+        view_box = Box.decode(data[0])
+        view_type = data[1]
+        view_state = data[2]
+        return self._create_view(view_box, view_type, view_state)
+
+    def _create_view(self, view_box: Box, view_type: str, view_state: Any) -> View:
         # Create view context
         ctx = ViewContext(
-            box=box,
-            width=box.w * (CELL_WIDTH + GRID_GAP) - GRID_GAP,
-            height=box.h * (CELL_WIDTH + GRID_GAP) - GRID_GAP,
+            box=view_box,
+            width=view_box.w * (CELL_WIDTH + GRID_GAP) - GRID_GAP,
+            height=view_box.h * (CELL_WIDTH + GRID_GAP) - GRID_GAP,
             data=self._data,
             mask=self._mask,
             refresh_views=self._refresh_views,
+            store_state=self._store_state,
         )
 
         view: View
-        for cls in VIEWS:
+        for cls in VIEW_TYPES:
             if cls.__name__ == view_type:
                 view = cls(ctx)
                 break
@@ -112,11 +125,27 @@ class Layout(Div):
             msg = f"Unknown view type '{view_type}'"
             raise ValueError(msg)
 
-        view.set_state(view_state)
+        try:
+            view.set_state(view_state)
+        except:
+            pass
 
         view.refresh()
 
         return view
+
+    def _refresh_views(self) -> None:
+        for view in self._views:
+            view.refresh()
+
+    def _store_state(self) -> None:
+        state = base64.b64encode(json.dumps(self.get_state()).encode()).decode()
+        Session.require().history.replace({}, f"?layout={state}")
+
+    def _load_state(self) -> None:
+        # Set state from URL query
+        if (state := Session.require().location.query.get("layout", None)) is not None:
+            self.set_state(json.loads(base64.b64decode(state).decode()))
 
 
 class Cell(Div):
@@ -127,7 +156,7 @@ class Cell(Div):
         self._setup()
 
     def _setup(self) -> None:
-        self.style({"position": "relative"})
+        self.style({"position": "relative", "background-color": "var(--bg-dark)"})
         self.append(self._view, self._button_resize())
         self._set_position()
 
@@ -179,4 +208,5 @@ class Cell(Div):
         self._view.ctx.height = box.h * (CELL_WIDTH + GRID_GAP) - GRID_GAP
 
         self._set_position()
+        self._layout._store_state()
         self._view.refresh()
