@@ -52,3 +52,24 @@ def icon_dots() -> SVG:
         height="24",
         viewBox="0 0 24 24",
     )
+
+
+def icon_theme() -> SVG:
+    return SVG(
+        SVGElem(
+            "g",
+            SVGElem("path", fill="currentColor", d="M2.75 12A9.25 9.25 0 0 0 12 21.25V2.75A9.25 9.25 0 0 0 2.75 12"),
+            SVGElem(
+                "path",
+                stroke="currentColor",
+                d="M12 21.25a9.25 9.25 0 0 0 0-18.5m0 18.5a9.25 9.25 0 0 1 0-18.5m0 18.5V2.75",
+            )
+            .set_attr("stroke-linecap", "round")
+            .set_attr("stroke-linejoin", "round")
+            .set_attr("stroke-width", "2"),
+            fill="none",
+        ),
+        width="24",
+        height="24",
+        viewBox="0 0 24 24",
+    )
