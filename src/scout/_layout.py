@@ -12,7 +12,7 @@ from slash.layout import Column
 from scout.components.select_grid import SelectGrid
 from scout.icons import icon_dots
 from scout.utils import Box
-from scout.views import EmptyView, View, ViewContext
+from scout.views import View, ViewContext
 from scout.views.scatter import ScatterView
 from scout.views.table import TableView
 
@@ -20,18 +20,34 @@ CELL_WIDTH = 128
 CELL_HEIGHT = 128
 GRID_GAP = 16
 
-VIEW_TYPES: list[type[View]] = [TableView, ScatterView, EmptyView]
+VIEW_TYPES: list[type[View]] = [TableView, ScatterView]
 
 
 class Layout(Div):
-    def __init__(self, cols: int, rows: int) -> None:
+    def __init__(
+        self,
+        data: pd.DataFrame,
+        *,
+        cols: int,
+        rows: int,
+        state: Any | None = None,
+    ) -> None:
         super().__init__()
 
+        # Set data
+        self._data = data
+        self._mask = pd.Series([True] * len(data))
+
+        # Initialize views
         self._cols = cols
         self._rows = rows
-
-        self._data: pd.DataFrame | None = None
         self._views: list[View] = []
+
+        # Load state (if applicable)
+        if state is not None:
+            self.set_state(state)
+        else:
+            self.load_state()
 
         self._setup()
 
@@ -43,13 +59,9 @@ class Layout(Div):
     def rows(self) -> int:
         return self._rows
 
-    def set_data(self, data: pd.DataFrame) -> None:
-        self._data = data
-        self._mask = pd.Series([True] * len(data))
-
+    def _refresh_views(self) -> None:
+        """Refreshes views."""
         for view in self._views:
-            view.ctx.data = self._data
-            view.ctx.mask = self._mask
             view.refresh()
 
     def _setup(self) -> None:
@@ -93,7 +105,6 @@ class Layout(Div):
         self._cols = state["cols"]
         self._rows = state["rows"]
         self._views = [self._decode_view(view_data) for view_data in state["views"]]
-        self._setup()
 
     def _encode_view(self, view: View) -> Any:
         return [
@@ -109,17 +120,15 @@ class Layout(Div):
         return self._create_view(view_box, view_type, view_state)
 
     def _create_view(self, view_box: Box, view_type: str, view_state: Any | None = None) -> View:
-        assert self._data is not None
-
         # Create view context
         ctx = ViewContext(
+            data=self._data,
+            mask=self._mask,
             box=view_box,
             width=view_box.w * (CELL_WIDTH + GRID_GAP) - GRID_GAP,
             height=view_box.h * (CELL_WIDTH + GRID_GAP) - GRID_GAP,
-            data=self._data,
-            mask=self._mask,
-            refresh_views=self._refresh_views,
             store_state=self._store_state,
+            refresh_views=self._refresh_views,
         )
 
         view: View
@@ -146,26 +155,25 @@ class Layout(Div):
         return view
 
     def add_view(self, view_box: Box, view_type: str) -> None:
-        view = self._create_view(view_box, view_type)
-        self._views.append(view)
+        self._views.append(view := self._create_view(view_box, view_type))
         self.append(Cell(self, view))
         view.refresh()
         self._store_state()
 
     def remove_view(self, view: View) -> None:
         self._views.remove(view)
+        for cell in self.children:
+            if isinstance(cell, Cell) and cell._view == view:
+                cell.unmount()
         self._store_state()
 
-    def _refresh_views(self) -> None:
-        for view in self._views:
-            view.refresh()
-
     def _store_state(self) -> None:
+        """Stores state in URL."""
         state = base64.b64encode(json.dumps(self.get_state()).encode()).decode()
         Session.require().history.replace({}, f"?layout={state}")
 
-    def _load_state(self) -> None:
-        # Set state from URL query
+    def load_state(self) -> None:
+        """Loads state from URL."""
         if (state := Session.require().location.query.get("layout", None)) is not None:
             self.set_state(json.loads(base64.b64decode(state).decode()))
 
@@ -186,9 +194,9 @@ class Cell(Div):
             }
         )
         self.append(self._view, self._button_resize())
-        self._set_position()
+        self._update_position()
 
-    def _set_position(self) -> None:
+    def _update_position(self) -> None:
         x, y = self._view.ctx.box.x, self._view.ctx.box.y
         w, h = self._view.ctx.box.w, self._view.ctx.box.h
         self.style({"grid-column": f"{x + 1} / span {w}", "grid-row": f"{y + 1} / span {h}"})
@@ -233,26 +241,20 @@ class Cell(Div):
                         "width": "100%",
                     }
                 )
-                .onclick(lambda: delete()),
+                .onclick(lambda: self._layout.remove_view(self._view)),
                 Button("Close").style({"width": "100%"}).onclick(lambda: self._dialog.unmount()),
             ).style({"gap": "8px", "align-items": "center"})
         ).style({"outline": "none"})
         self.append(self._dialog)
 
-        def delete() -> None:
-            self._layout.remove_view(self._view)
-            self.unmount()
-
         # Show dialog
         self._dialog.show_modal()
 
     def _resize(self, box: Box) -> None:
-        # self._dialog.unmount()
-
         self._view.ctx.box = box
         self._view.ctx.width = box.w * (CELL_WIDTH + GRID_GAP) - GRID_GAP
         self._view.ctx.height = box.h * (CELL_WIDTH + GRID_GAP) - GRID_GAP
 
-        self._set_position()
-        self._layout._store_state()
+        self._update_position()
         self._view.refresh()
+        self._layout._store_state()

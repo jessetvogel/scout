@@ -14,7 +14,7 @@ class TableView(View, DataTable):
         DataTable.__init__(self, tuple(ctx.data.keys()))
 
     def refresh(self) -> None:
-        # self.set_keys(tuple(self.ctx.data.keys()))
+        # Update table
         self.set_max_rows(self.ctx.height // 37 - 2)
         self.set_data(tuple(row for i, row in self.ctx.data.iterrows() if self.ctx.mask[i]))  # type: ignore
 
@@ -22,16 +22,20 @@ class TableView(View, DataTable):
         return {"keys": self._keys}
 
     def set_state(self, state: Any) -> None:
-        self.set_keys(state["keys"])
+        self.set_keys([key for key in state["keys"] if key in self.ctx.data])
 
     def settings(self) -> Elem:
+        df = self.ctx.data
+
+        # List of checkboxes per column
         checkboxes: list[Checkbox] = []
-        for key in self.ctx.data.keys():
-            checkboxes.append(Checkbox(key, checked=key in self._keys).onclick(lambda: update()))
 
         def update() -> None:
-            self.set_keys([key for key, checkbox in zip(self.ctx.data.keys(), checkboxes) if checkbox.checked])
+            self.set_keys([key for key, checkbox in zip(df.keys(), checkboxes) if checkbox.checked])
             self.ctx.store_state()
+
+        for key in df.keys():
+            checkboxes.append(Checkbox(key, checked=key in self._keys).onclick(update))
 
         return Column(
             Span("Columns").style({"font-weight": "bold", "text-align": "center"}),
