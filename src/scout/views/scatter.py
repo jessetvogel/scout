@@ -99,15 +99,15 @@ class ScatterView(View, Panel):
                     Column(
                         Span("x-axis").style({"font-weight": "bold", "font-size": "12px", "margin-bottom": "4px"}),
                         self._select_x,
-                    ).style({"flex": "1", "text-align": "center"}),
+                    ).style({"flex": "1", "text-align": "center", "min-width": "0"}),
                     Column(
                         Span("y-axis").style({"font-weight": "bold", "font-size": "12px", "margin-bottom": "4px"}),
                         self._select_y,
-                    ).style({"flex": "1", "text-align": "center"}),
+                    ).style({"flex": "1", "text-align": "center", "min-width": "0"}),
                     Column(
                         Span("color").style({"font-weight": "bold", "font-size": "12px", "margin-bottom": "4px"}),
                         self._select_c,
-                    ).style({"flex": "1", "text-align": "center"}),
+                    ).style({"flex": "1", "text-align": "center", "min-width": "0"}),
                 ).style({"gap": "16px", "justify-content": "center"}),
             ).style({"gap": "0px"})
         )
@@ -147,9 +147,12 @@ class ScatterView(View, Panel):
         }
 
     def set_state(self, state: Any) -> None:
-        self.x_key = state["x"]
-        self.y_key = state["y"]
-        self.c_key = state["c"]
+        if state["x"] in self.ctx.data:
+            self.x_key = state["x"]
+        if state["y"] in self.ctx.data:
+            self.y_key = state["y"]
+        if state["c"] in self.ctx.data:
+            self.c_key = state["c"]
 
     def _set_selection(self, box: Box) -> None:
         # Convert box coordinates to data coordinates

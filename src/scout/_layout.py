@@ -47,6 +47,11 @@ class Layout(Div):
         self._data = data
         self._mask = pd.Series([True] * len(data))
 
+        for view in self._views:
+            view.ctx.data = self._data
+            view.ctx.mask = self._mask
+            view.refresh()
+
     def _setup(self) -> None:
         self.clear()
         self.style(

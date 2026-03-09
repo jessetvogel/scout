@@ -1,7 +1,7 @@
 from collections.abc import Callable
 
 import pandas as pd
-from slash.basic import Tooltip
+from slash.basic import Loading, Tooltip
 from slash.core import Elem, Session
 from slash.html import Button, Dialog, Div, Option, Select, Span
 from slash.layout import Column, Row
@@ -43,14 +43,17 @@ class Home(Div):
             self._set_data(self._source)
 
     def _set_data(self, data: pd.DataFrame) -> None:
+        should_set_state = self._layout._data is None
+
         # Pass data to layout
         self._layout.set_data(data)
 
         # Refresh menu
         self._menu.refresh()
 
-        # Load state
-        self._layout._load_state()
+        if should_set_state:
+            # Load state
+            self._layout._load_state()
 
 
 class Menu(Column):
@@ -174,10 +177,11 @@ class SelectData(Row):
 
         self.append(self._separator())
 
-        def _load_data() -> None:
-            kwargs = {name: select.value for name, select in selects.items()}
-            data = self._source.data(**kwargs)
-            self._set_data(data)
+        async def _load_data() -> None:
+            async with Loading("Loading data.."):
+                kwargs = {name: select.value for name, select in selects.items()}
+                data = self._source.data(**kwargs)
+                self._set_data(data)
 
         self.append(Button("Load data").onclick(_load_data))
 
