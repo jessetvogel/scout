@@ -16,34 +16,38 @@ from scout.utils import Box
 class Home(Div):
     def __init__(
         self,
-        data: pd.DataFrame | DataSource,
+        source: pd.DataFrame | DataSource,
         *,
         cols: int,
         rows: int,
     ) -> None:
         super().__init__()
 
-        self._data = data
+        self._source = source
         self._cols = cols
         self._rows = rows
 
         self._setup()
 
     def _setup(self) -> None:
-        if isinstance(self._data, DataSource):
-            self.append(SelectData(self._data, self._set_data))
+        if isinstance(self._source, DataSource):
+            self.append(SelectData(self._source, self._set_data))
 
         self._layout = Layout(cols=self._cols, rows=self._rows)
         self.append(Column(self._layout).style({"gap": "32px", "align-items": "center", "padding-top": "32px"}))
 
-        self.append(Menu(self._layout))
+        self._menu = Menu(self._layout)
+        self.append(self._menu)
 
-        if isinstance(self._data, pd.DataFrame):
-            self._set_data(self._data)
+        if isinstance(self._source, pd.DataFrame):
+            self._set_data(self._source)
 
     def _set_data(self, data: pd.DataFrame) -> None:
         # Pass data to layout
         self._layout.set_data(data)
+
+        # Refresh menu
+        self._menu.refresh()
 
         # Load state
         self._layout._load_state()
@@ -71,21 +75,29 @@ class Menu(Column):
             }
         )
 
-        self.append(
-            self._button(icon_table().style({"width": "20px"}), title="Add table").onclick(
-                lambda: self._add_view("TableView", "table")
-            )
+        self._button_table = self._button(icon_table().style({"width": "20px"}), title="Add table").onclick(
+            lambda: self._add_view("TableView", "table")
         )
-        self.append(
-            self._button(icon_scatter().style({"width": "20px"}), title="Add scatter").onclick(
-                lambda: self._add_view("ScatterView", "scatter")
-            )
+
+        self._button_scatter = self._button(icon_scatter().style({"width": "20px"}), title="Add scatter").onclick(
+            lambda: self._add_view("ScatterView", "scatter")
         )
-        self.append(
-            self._button(icon_theme().style({"width": "20px"}), title="Toggle theme").onclick(
-                lambda: self._toggle_theme()
-            )
+
+        self._button_theme = self._button(icon_theme().style({"width": "20px"}), title="Toggle theme").onclick(
+            lambda: self._toggle_theme()
         )
+
+        self.append(self._button_table)
+        self.append(self._button_scatter)
+        self.append(self._button_theme)
+
+        self.refresh()
+
+    def refresh(self) -> None:
+        disabled = self._layout._data is None
+
+        self._button_table.set_disabled(disabled)
+        self._button_scatter.set_disabled(disabled)
 
     def _button(self, icon: Elem, *, title: str | None = None) -> Button:
         button = Button(icon).style(

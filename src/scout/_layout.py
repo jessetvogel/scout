@@ -20,11 +20,7 @@ CELL_WIDTH = 128
 CELL_HEIGHT = 128
 GRID_GAP = 16
 
-VIEW_TYPES: list[type[View]] = [
-    TableView,
-    ScatterView,
-    EmptyView,
-]
+VIEW_TYPES: list[type[View]] = [TableView, ScatterView, EmptyView]
 
 
 class Layout(Div):
@@ -33,6 +29,8 @@ class Layout(Div):
 
         self._cols = cols
         self._rows = rows
+
+        self._data: pd.DataFrame | None = None
         self._views: list[View] = []
 
         self._setup()
@@ -106,6 +104,8 @@ class Layout(Div):
         return self._create_view(view_box, view_type, view_state)
 
     def _create_view(self, view_box: Box, view_type: str, view_state: Any | None = None) -> View:
+        assert self._data is not None
+
         # Create view context
         ctx = ViewContext(
             box=view_box,
@@ -130,7 +130,11 @@ class Layout(Div):
             try:
                 view.set_state(view_state)
             except Exception as err:
-                Session.require().log("Failed to set state of view", level="warning", details=Pre(Code(str(err))))
+                Session.require().log(
+                    "Failed to set state of view",
+                    level="warning",
+                    details=Pre(Code(str(err))),
+                )
 
         view.refresh()
 
@@ -169,7 +173,13 @@ class Cell(Div):
         self._setup()
 
     def _setup(self) -> None:
-        self.style({"position": "relative", "background-color": "var(--bg-dark)", "overflow": "auto"})
+        self.style(
+            {
+                "position": "relative",
+                "background-color": "var(--bg-dark)",
+                "overflow": "auto",
+            }
+        )
         self.append(self._view, self._button_resize())
         self._set_position()
 
@@ -211,7 +221,13 @@ class Cell(Div):
                 SelectGrid(self._layout.cols, self._layout.rows).onchange(self._resize),
                 self._view.settings(),
                 Button("Delete")
-                .style({"color": "var(--red)", "border": "1px solid var(--red)", "width": "100%"})
+                .style(
+                    {
+                        "color": "var(--red)",
+                        "border": "1px solid var(--red)",
+                        "width": "100%",
+                    }
+                )
                 .onclick(lambda: delete()),
                 Button("Close").style({"width": "100%"}).onclick(lambda: self._dialog.unmount()),
             ).style({"gap": "8px", "align-items": "center"})
