@@ -90,5 +90,7 @@ class FilterView(View, Panel):
         self.key = state["key"]
         self.value = state["value"]
 
+        self._setup()
+
     def settings(self) -> Elem:
         return Div()
