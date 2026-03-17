@@ -24,23 +24,27 @@ class ScatterView(View, Panel):
         View.__init__(self, ctx)
         Panel.__init__(self)
 
-        df = self.ctx.data
-        keys = tuple(df.keys())
-        keys_numeric = tuple(key for key in keys if is_numeric_dtype(df.dtypes[key]))
+        self._setup()
 
-        self._select_x = Select([Option(key) for key in keys_numeric]).style({"text-align": "center"})
-        self._select_y = Select([Option(key) for key in keys_numeric]).style({"text-align": "center"})
-        self._select_c = Select([Option("-", "")] + [Option(key) for key in keys]).style({"text-align": "center"})
-
-        self.x_key = keys_numeric[0]
-        self.y_key = keys_numeric[min(1, len(keys_numeric))]
-        self.c_key = ""
-
-        self._select_x.onchange(self.update)
-        self._select_y.onchange(self.update)
-        self._select_c.onchange(self.update)
-
+    def _setup(self) -> None:
         self.style({"width": "100%", "height": "100%", "box-sizing": "border-box", "padding": f"{PAD}px"})
+
+        df = self.ctx.data
+
+        keys_all = tuple(df.keys())
+        keys_num = tuple(key for key in keys_all if is_numeric_dtype(df.dtypes[key]))
+
+        self._select_x = Select([Option(key) for key in keys_num]).style({"text-align": "center"})
+        self._select_y = Select([Option(key) for key in keys_num]).style({"text-align": "center"})
+        self._select_c = Select([Option("-", "")] + [Option(key) for key in keys_all]).style({"text-align": "center"})
+
+        self.x_key = keys_num[0]
+        self.y_key = keys_num[min(1, len(keys_num) - 1)]
+        self.c_key = None
+
+        self._select_x.onchange(self._onchange_select)
+        self._select_y.onchange(self._onchange_select)
+        self._select_c.onchange(self._onchange_select)
 
     @property
     def x_key(self) -> str:
@@ -67,34 +71,35 @@ class ScatterView(View, Panel):
     def c_key(self, key: str | None) -> None:
         self._select_c.value = key if key is not None else ""
 
-    def update(self) -> None:
+    def _onchange_select(self) -> None:
         self.ctx.store_state()
         self.refresh()
 
     def refresh(self) -> None:
+        df = self.ctx.data
+
         width = self.ctx.width - PAD - PAD
         height = self.ctx.height - PAD - PAD - 54
 
         self._axes = Axes(width=width, height=height).set_grid(True)
 
-        select_rect = (
-            SelectRect()
-            .style(
-                {
-                    "position": "absolute",
-                    "width": f"{width}px",
-                    "height": f"{height}px",
-                    "top": "0px",
-                    "left": "0px",
-                }
-            )
-            .onchange(self._set_selection)
-        )
-
         self.clear()
         self.append(
             Column(
-                Div(self._axes, select_rect).style({"position": "relative"}),
+                Div(
+                    self._axes,
+                    SelectRect()
+                    .style(
+                        {
+                            "position": "absolute",
+                            "width": f"{width}px",
+                            "height": f"{height}px",
+                            "top": "0px",
+                            "left": "0px",
+                        }
+                    )
+                    .onchange(self._set_selection),
+                ).style({"position": "relative"}),
                 Row(
                     Column(
                         Span("x-axis").style({"font-weight": "bold", "font-size": "12px", "margin-bottom": "4px"}),
@@ -111,8 +116,6 @@ class ScatterView(View, Panel):
                 ).style({"gap": "16px", "justify-content": "center"}),
             ).style({"gap": "0px"})
         )
-
-        df = self.ctx.data
 
         if self.c_key is None:
             self._add_scatter(df)
@@ -147,14 +150,19 @@ class ScatterView(View, Panel):
         }
 
     def set_state(self, state: Any) -> None:
-        if state["x"] in self.ctx.data:
+        df = self.ctx.data
+
+        if state["x"] in df:
             self.x_key = state["x"]
-        if state["y"] in self.ctx.data:
+        if state["y"] in df:
             self.y_key = state["y"]
-        if state["c"] in self.ctx.data:
+        if state["c"] in df:
             self.c_key = state["c"]
 
     def _set_selection(self, box: Box) -> None:
+        df = self.ctx.data
+        mask = self.ctx.mask
+
         # Convert box coordinates to data coordinates
         x_min, y_max = self._axes._uv_to_xy(box.x, box.y)
         x_max, y_min = self._axes._uv_to_xy(box.x + box.w, box.y + box.h)
@@ -162,11 +170,9 @@ class ScatterView(View, Panel):
         # Set mask
         if x_min == x_max and y_min == y_max:
             # If just clicked
-            self.ctx.mask[:] = True
+            mask[:] = True
         else:
-            self.ctx.mask[:] = self.ctx.data[self.x_key].between(x_min, x_max) & self.ctx.data[self.y_key].between(
-                y_min, y_max
-            )
+            mask[:] = df[self.x_key].between(x_min, x_max) & df[self.y_key].between(y_min, y_max)
 
         # Refresh views
         self.ctx.refresh_views()

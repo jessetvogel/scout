@@ -27,40 +27,40 @@ class Home(Div):
         self._cols = cols
         self._rows = rows
 
+        self._layout: Layout | None = None
+
         self._setup()
 
     def _setup(self) -> None:
         if isinstance(self._source, DataSource):
             self.append(SelectData(self._source, self._set_data))
 
-        self._layout = Layout(cols=self._cols, rows=self._rows)
-        self.append(Column(self._layout).style({"gap": "32px", "align-items": "center", "padding-top": "32px"}))
+        self._content = Column().style({"gap": "32px", "align-items": "center", "padding-top": "32px"})
+        self.append(self._content)
 
-        self._menu = Menu(self._layout)
+        self._menu = Menu()
         self.append(self._menu)
 
         if isinstance(self._source, pd.DataFrame):
             self._set_data(self._source)
 
     def _set_data(self, data: pd.DataFrame) -> None:
-        should_set_state = self._layout._data is None
+        # Old state
+        state = self._layout.get_state() if self._layout is not None else None
 
-        # Pass data to layout
-        self._layout.set_data(data)
+        # Create new layout
+        self._layout = Layout(data, cols=self._cols, rows=self._rows, state=state)
+        self._content.clear().append(self._layout)
 
         # Refresh menu
-        self._menu.refresh()
-
-        if should_set_state:
-            # Load state
-            self._layout._load_state()
+        self._menu.set_layout(self._layout)
 
 
 class Menu(Column):
-    def __init__(self, layout: Layout) -> None:
+    def __init__(self) -> None:
         super().__init__()
 
-        self._layout = layout
+        self._layout: Layout | None = None
 
         self._setup()
 
@@ -99,10 +99,14 @@ class Menu(Column):
         self.append(self._button_filter)
         self.append(self._button_theme)
 
-        self.refresh()
+        self._refresh_buttons()
 
-    def refresh(self) -> None:
-        disabled = self._layout._data is None
+    def set_layout(self, layout: Layout) -> None:
+        self._layout = layout
+        self._refresh_buttons()
+
+    def _refresh_buttons(self) -> None:
+        disabled = self._layout is None
 
         self._button_table.set_disabled(disabled)
         self._button_scatter.set_disabled(disabled)
@@ -127,12 +131,15 @@ class Menu(Column):
         return button
 
     def _add_view(self, view_type: str, name: str) -> None:
+        layout = self._layout
+        assert layout is not None
+
         dialog = Dialog(
             Column(
                 Span(f"Place {name}").style({"font-weight": "bold"}),
                 SelectGrid(
-                    cols=self._layout.cols,
-                    rows=self._layout.rows,
+                    cols=layout.cols,
+                    rows=layout.rows,
                 ).onchange(lambda box: actually_add_view(box)),
             ).style({"gap": "16px", "align-items": "center"})
         ).style({"outline": "none"})
@@ -141,7 +148,7 @@ class Menu(Column):
 
         def actually_add_view(box: Box) -> None:
             dialog.unmount()
-            self._layout.add_view(box, view_type)
+            layout.add_view(box, view_type)
 
     def _toggle_theme(self) -> None:
         theme = Session.require().get_theme()

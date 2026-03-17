@@ -49,13 +49,11 @@ class FilterView(View, Panel):
             }
         )
         self.append(
-            select := Select(
-                [Option("-", value="")] + [Option(key) for key in self._keys]
-            ).onchange(self._onchange_select)
+            select := Select([Option("-", value="")] + [Option(key) for key in self._keys]).onchange(
+                self._onchange_select
+            )
         )
-        self.append(
-            input := Input(placeholder="Filter value").onchange(self._onchange_input)
-        )
+        self.append(input := Input(placeholder="Filter value").onchange(self._onchange_input))
 
         select.value = self.key or ""
         input.value = self.value or ""

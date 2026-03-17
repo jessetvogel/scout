@@ -7,28 +7,26 @@ from typing import Any
 
 import pandas as pd
 from slash.core import Elem
-from slash.html import Span
-from slash.layout import Panel
 
 from scout.utils import Box
 
 
 @dataclass
 class ViewContext:
+    data: pd.DataFrame
+    """Current data."""
+    mask: pd.Series
+    """Current mask. Editable."""
     box: Box
-    """Box."""
+    """Box of view."""
     width: int
     """Width of the view in pixels."""
     height: int
     """Height of the view in pixels."""
-    data: pd.DataFrame
-    """Data."""
-    mask: pd.Series
-    """Selection mask."""
-    refresh_views: Callable[[], None]
-    """Function to refresh all views."""
     store_state: Callable[[], None]
-    """Function to store state."""
+    """Store state."""
+    refresh_views: Callable[[], None]
+    """Refresh views."""
 
 
 class View(ABC, Elem):
@@ -53,22 +51,3 @@ class View(ABC, Elem):
     @abstractmethod
     def settings(self) -> Elem:
         """Settings element."""
-
-
-class EmptyView(View, Panel):
-    def __init__(self, ctx: ViewContext) -> None:
-        View.__init__(self, ctx)
-        Panel.__init__(self)
-
-        self.style({"width": "100%", "height": "100%", "box-sizing": "border-box", "padding": "16px"})
-
-        self.append(Span("empty panel").style({"font-style": "italic"}))
-
-    def get_state(self) -> Any:
-        """Returns the current state."""
-
-    def set_state(self, state: Any) -> None:
-        """Sets the current state."""
-
-
-__all__ = ["View", "EmptyView"]
