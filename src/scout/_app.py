@@ -20,14 +20,16 @@ class App:
         *,
         cols: int = 6,
         rows: int = 5,
+        port: int = 8080,
     ) -> None:
         self._data = data
         self._cols = cols
         self._rows = rows
+        self._port = port
 
     def run(self) -> None:
         """Runs the application."""
-        app = SlashApp(port=8080)
+        app = SlashApp(port=self._port)
         app.add_route("/", self._home)
         app.run()
 

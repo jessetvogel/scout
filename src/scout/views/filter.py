@@ -64,6 +64,7 @@ class FilterView(View, Panel):
         else:
             self.key = event.value
 
+        self.ctx.store_state()
         self._update_selection()
 
     def _onchange_input(self, event: ChangeEvent) -> None:
@@ -72,6 +73,7 @@ class FilterView(View, Panel):
         else:
             self.value = event.value
 
+        self.ctx.store_state()
         self._update_selection()
 
     def _update_selection(self) -> None:
