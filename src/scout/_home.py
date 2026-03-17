@@ -9,7 +9,7 @@ from slash.layout import Column, Row
 from scout._layout import Layout
 from scout._source import DataSource
 from scout.components.select_grid import SelectGrid
-from scout.icons import icon_scatter, icon_table, icon_theme
+from scout.icons import icon_filter, icon_scatter, icon_table, icon_theme
 from scout.utils import Box
 
 
@@ -86,12 +86,17 @@ class Menu(Column):
             lambda: self._add_view("ScatterView", "scatter")
         )
 
+        self._button_filter = self._button(icon_filter().style({"width": "20px"}), title="Add filter").onclick(
+            lambda: self._add_view("FilterView", "filter")
+        )
+
         self._button_theme = self._button(icon_theme().style({"width": "20px"}), title="Toggle theme").onclick(
             lambda: self._toggle_theme()
         )
 
         self.append(self._button_table)
         self.append(self._button_scatter)
+        self.append(self._button_filter)
         self.append(self._button_theme)
 
         self.refresh()
@@ -101,6 +106,7 @@ class Menu(Column):
 
         self._button_table.set_disabled(disabled)
         self._button_scatter.set_disabled(disabled)
+        self._button_filter.set_disabled(disabled)
 
     def _button(self, icon: Elem, *, title: str | None = None) -> Button:
         button = Button(icon).style(

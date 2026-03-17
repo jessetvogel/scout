@@ -13,6 +13,7 @@ from scout.components.select_grid import SelectGrid
 from scout.icons import icon_dots
 from scout.utils import Box
 from scout.views import EmptyView, View, ViewContext
+from scout.views.filter import FilterView
 from scout.views.scatter import ScatterView
 from scout.views.table import TableView
 
@@ -20,7 +21,7 @@ CELL_WIDTH = 128
 CELL_HEIGHT = 128
 GRID_GAP = 16
 
-VIEW_TYPES: list[type[View]] = [TableView, ScatterView, EmptyView]
+VIEW_TYPES: list[type[View]] = [TableView, ScatterView, FilterView, EmptyView]
 
 
 class Layout(Div):

@@ -37,6 +37,20 @@ def icon_scatter() -> SVG:
     )
 
 
+def icon_filter() -> SVG:
+    return SVG(
+        SVGElem("path", d="M4.5 7h15M7 12h10m-7 5h4")
+        .set_attr("stroke-linecap", "round")
+        .set_attr("stroke-linejoin", "round")
+        .set_attr("stroke-width", "2")
+        .set_attr("fill", "none")
+        .set_attr("stroke", "currentColor"),
+        width="24",
+        height="24",
+        viewBox="0 0 24 24",
+    )
+
+
 def icon_dots() -> SVG:
     return SVG(
         SVGElem(
@@ -58,7 +72,11 @@ def icon_theme() -> SVG:
     return SVG(
         SVGElem(
             "g",
-            SVGElem("path", fill="currentColor", d="M2.75 12A9.25 9.25 0 0 0 12 21.25V2.75A9.25 9.25 0 0 0 2.75 12"),
+            SVGElem(
+                "path",
+                fill="currentColor",
+                d="M2.75 12A9.25 9.25 0 0 0 12 21.25V2.75A9.25 9.25 0 0 0 2.75 12",
+            ),
             SVGElem(
                 "path",
                 stroke="currentColor",

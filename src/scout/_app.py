@@ -27,7 +27,7 @@ class App:
 
     def run(self) -> None:
         """Runs the application."""
-        app = SlashApp()
+        app = SlashApp(port=8080)
         app.add_route("/", self._home)
         app.run()
 
